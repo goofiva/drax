@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,52 +13,33 @@ import (
 type DestructionLevel int
 
 const (
-	// Version of DRAX
-	Version string = "0.3.0"
-	// DraxPort is the port DRAX is listening on
-	DraxPort int = 7777
+	// VERSION of DRAX
+	VERSION string = "0.4.0"
+	// DEFAULTPORT is the port DRAX is listening on
+	DEFAULTPORT string = "7777"
+	// MARATHONURL for connection to DC/OS
+	MARATHONURL string = "http://marathon.mesos:8080"
 	// DefaultNumTargets is the number of tasks to kill
 	DefaultNumTargets int = 2
 )
 
 const (
-	// DlBasic means destroy random tasks
-	DlBasic DestructionLevel = iota
-	// DlAdvanced means destroy random apps
-	DlAdvanced
-	// DlAll means destroy random apps and services
-	DlAll
+	// DLBASIC means destroy random tasks
+	DLBASIC DestructionLevel = iota
+	// DLADVANCED means destroy random apps
+	DLADVANCED
+	// DLALL means destroy random apps and services
+	DLALL
 )
 
 var (
-	mux                *http.ServeMux
-	marathonURL        string
-	destructionLevel   = DestructionLevel(DlBasic)
-	numTargets         = int(DefaultNumTargets)
-	overallTasksKilled uint64
+	port             string
+	marathonURL      string
+	destructionLevel = DestructionLevel(DLBASIC)
+	numTargets       = int(DefaultNumTargets)
 )
 
 func init() {
-	mux = http.NewServeMux()
-
-	// per default, use the cluster-internal, non-auth endpoint:
-	marathonURL = "http://marathon.mesos:8080"
-	if murl := os.Getenv("MARATHON_URL"); murl != "" {
-		marathonURL = murl
-	}
-	log.WithFields(log.Fields{"main": "init"}).Info("Using Marathon at  ", marathonURL)
-
-	if dl := os.Getenv("DESTRUCTION_LEVEL"); dl != "" {
-		l, _ := strconv.Atoi(dl)
-		destructionLevel = DestructionLevel(l)
-	}
-	log.WithFields(log.Fields{"main": "init"}).Info("On destruction level ", destructionLevel)
-
-	if nt := os.Getenv("NUM_TARGETS"); nt != "" {
-		n, _ := strconv.Atoi(nt)
-		numTargets = n
-	}
-	log.WithFields(log.Fields{"main": "init"}).Info("I will destroy ", numTargets, " tasks on a rampage")
 
 	if ll := os.Getenv("LOG_LEVEL"); ll != "" {
 		switch strings.ToUpper(ll) {
@@ -70,17 +50,48 @@ func init() {
 		default:
 			log.SetLevel(log.ErrorLevel)
 		}
+
 	}
+
+	log.WithFields(log.Fields{"main": "init"}).Info("This is DRAX in version ", VERSION)
+
+	// set port for http server
+	if port = os.Getenv("PORT"); len(port) == 0 {
+		port = DEFAULTPORT
+	}
+	log.WithFields(log.Fields{"main": "init"}).Info("Listening on port ", port)
+
+	// set destruction level
+	if dl := os.Getenv("DESTRUCTION_LEVEL"); dl != "" {
+		l, _ := strconv.Atoi(dl)
+		destructionLevel = DestructionLevel(l)
+	}
+	log.WithFields(log.Fields{"main": "init"}).Info("On destruction level ", destructionLevel)
+
+	// per default, use the cluster-internal, non-auth endpoint:
+	if marathonURL = os.Getenv("MARATHON_URL"); marathonURL == "" {
+		marathonURL = MARATHONURL
+	}
+	log.WithFields(log.Fields{"main": "init"}).Info("Using Marathon at  ", marathonURL)
+
+	if nt := os.Getenv("NUM_TARGETS"); nt != "" {
+		n, _ := strconv.Atoi(nt)
+		numTargets = n
+	}
+	log.WithFields(log.Fields{"main": "init"}).Info("I will destroy ", numTargets, " tasks on a rampage")
+
 }
 
 func main() {
-	log.Info("This is DRAX in version ", Version, " listening on port ", DraxPort)
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		log.WithFields(log.Fields{"handle": "/health"}).Info("health check")
-		fmt.Fprint(w, "I am Groot")
-	})
-	mux.Handle("/stats", new(NounStats))
-	mux.Handle("/rampage", new(NounRampage))
-	p := strconv.Itoa(DraxPort)
-	log.Fatal(http.ListenAndServe(":"+p, mux))
+
+	http.HandleFunc("/health", getHealth)
+	http.HandleFunc("/stats", getStats)
+	http.HandleFunc("/rampage", postRampage)
+
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+
 }

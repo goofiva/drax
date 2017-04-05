@@ -3,35 +3,43 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	// "io/ioutil"
-	marathon "github.com/gambol99/go-marathon"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync/atomic"
+
+	marathon "github.com/gambol99/go-marathon"
 )
 
-// API nouns
-type NOUN_Stats struct{}
-type NOUN_Rampage struct{}
+// NounStats API
+type NounStats struct{}
 
-// JSON payloads
+// NounRampage ?
+type NounRampage struct{}
+
+// RampageParams JSON payloads
 type RampageParams struct {
 	Level string `json:"level"`
 	AppID string `json:"app"`
 }
+
+// StatsResult ?
 type StatsResult struct {
 	TasksKilled uint64 `json:"gone"`
 }
+
+// RampageResult ?
 type RampageResult struct {
 	Success  bool     `json:"success"`
 	TaskList []string `json:"goners"`
 }
 
 // Handles /stats API calls (GET only)
-func (n NOUN_Stats) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (n NounStats) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.WithFields(log.Fields{"handle": "/stats"}).Info("Reporting on runtime statistics ...")
 	// extract $RUNS parameter from /stats?runs=$RUNS in the following:
 	runsParam := r.URL.Query().Get("runs")
@@ -49,41 +57,41 @@ func (n NOUN_Stats) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handles /rampage API calls (POST only)
-func (n NOUN_Rampage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (n NounRampage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, "Can't parse rampage params", 500)
-		} else {
-			ok, rp := parseRampageParams(r)
-			if !ok {
-				http.Error(w, "Can't decode rampage params", 500)
-			}
-			levelParam := rp.Level
-			if levelParam != "" {
-				log.WithFields(log.Fields{"handle": "/rampage"}).Info("Got level param ", levelParam)
-				if level, err := strconv.Atoi(levelParam); err == nil {
-					destructionLevel = DestructionLevel(level)
-				}
-			}
-			log.WithFields(log.Fields{"handle": "/rampage"}).Info("Starting rampage on destruction level ", destructionLevel)
-			switch destructionLevel {
-			case DL_BASIC:
-				killTasks(w, r)
-			case DL_ADVANCED:
-				appParam := rp.AppID
-				if appParam != "" {
-					log.WithFields(log.Fields{"handle": "/rampage"}).Info("Got app param ", appParam)
-					killTasksOfApp(w, r, appParam)
-				} else {
-					http.NotFound(w, r)
-				}
-			case DL_ALL:
-				fmt.Fprint(w, "not yet implemented")
-			default:
+		//err := r.ParseForm()
+		//if err != nil {
+		//	http.Error(w, "Can't parse rampage params", 500)
+		//} else {
+		_, rp := parseRampageParams(r)
+		//if !ok {
+		//	http.Error(w, "Can't decode rampage params", 500)
+		//}
+		//	levelParam := rp.Level
+		//	if levelParam != "" {
+		//		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Got level param ", levelParam)
+		//		if level, err := strconv.Atoi(levelParam); err == nil {
+		//			destructionLevel = DestructionLevel(level)
+		//		}
+		//	}
+		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Starting rampage on destruction level ", destructionLevel)
+		switch destructionLevel {
+		case DlBasic:
+			killTasks(w, r)
+		case DlAdvanced:
+			appParam := rp.AppID
+			if appParam != "" {
+				log.WithFields(log.Fields{"handle": "/rampage"}).Info("Got app param ", appParam)
+				killTasksOfApp(w, r, appParam)
+			} else {
 				http.NotFound(w, r)
 			}
+		case DlAll:
+			fmt.Fprint(w, "not yet implemented")
+		default:
+			http.NotFound(w, r)
 		}
+		//}
 	} else {
 		log.WithFields(log.Fields{"handle": "/rampage"}).Error("Only POST method supported")
 		http.NotFound(w, r)
@@ -97,9 +105,8 @@ func parseRampageParams(r *http.Request) (bool, *RampageParams) {
 	err := decoder.Decode(rp)
 	if err != nil {
 		return false, nil
-	} else {
-		return true, rp
 	}
+	return true, rp
 }
 
 // killTasks will identify tasks of any apps (but not framework services)
@@ -192,20 +199,19 @@ func killTask(c marathon.Marathon, taskID string) bool {
 	if err != nil {
 		log.WithFields(log.Fields{"handle": "/rampage"}).Debug("Not able to kill task ", taskID)
 		return false
-	} else {
-		log.WithFields(log.Fields{"handle": "/rampage"}).Debug("Killed task ", taskID)
-		go incTasksKilled()
-		return true
 	}
+	log.WithFields(log.Fields{"handle": "/rampage"}).Debug("Killed task ", taskID)
+	go incTasksKilled()
+	return true
+
 }
 
 // myself returns true if it is applied to DRAX Marathon app itself
 func myself(app *marathon.Application) bool {
 	if strings.Contains(app.ID, "drax") {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 // isFramework returns true if the Marathon app is a service framework,

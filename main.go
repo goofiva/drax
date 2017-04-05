@@ -2,39 +2,40 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
-// destruction level type (0 .. 2)
+// DestructionLevel of type (0 .. 2)
 type DestructionLevel int
 
 const (
-	// DRAX version
-	VERSION string = "0.3.0"
-	// The IP port DRAX is listening on
-	DRAX_PORT int = 7777
-	// The number of tasks to kill
-	DEFAULT_NUM_TARGETS int = 2
+	// Version of DRAX
+	Version string = "0.3.0"
+	// DraxPort is the port DRAX is listening on
+	DraxPort int = 7777
+	// DefaultNumTargets is the number of tasks to kill
+	DefaultNumTargets int = 2
 )
 
 const (
-	// DL_BASIC means destroy random tasks
-	DL_BASIC DestructionLevel = iota
-	// DL_ADVANCED means destroy random apps
-	DL_ADVANCED
-	// DL_ALL means destroy random apps and services
-	DL_ALL
+	// DlBasic means destroy random tasks
+	DlBasic DestructionLevel = iota
+	// DlAdvanced means destroy random apps
+	DlAdvanced
+	// DlAll means destroy random apps and services
+	DlAll
 )
 
 var (
 	mux                *http.ServeMux
 	marathonURL        string
-	destructionLevel   DestructionLevel = DL_BASIC
-	numTargets         int              = DEFAULT_NUM_TARGETS
+	destructionLevel   = DestructionLevel(DlBasic)
+	numTargets         = int(DefaultNumTargets)
 	overallTasksKilled uint64
 )
 
@@ -73,13 +74,13 @@ func init() {
 }
 
 func main() {
-	log.Info("This is DRAX in version ", VERSION, " listening on port ", DRAX_PORT)
+	log.Info("This is DRAX in version ", Version, " listening on port ", DraxPort)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		log.WithFields(log.Fields{"handle": "/health"}).Info("health check")
 		fmt.Fprint(w, "I am Groot")
 	})
-	mux.Handle("/stats", new(NOUN_Stats))
-	mux.Handle("/rampage", new(NOUN_Rampage))
-	p := strconv.Itoa(DRAX_PORT)
+	mux.Handle("/stats", new(NounStats))
+	mux.Handle("/rampage", new(NounRampage))
+	p := strconv.Itoa(DraxPort)
 	log.Fatal(http.ListenAndServe(":"+p, mux))
 }

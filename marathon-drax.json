@@ -9,8 +9,25 @@
       "uri": "https://github.com/dcos-labs/drax/releases/download/0.3.0/drax"
     }
   ],
+  "healthChecks": [
+    {
+      "portIndex": 0,
+      "path": "/health",
+      "protocol": "MESOS_HTTP"
+    }
+  ],
   "acceptedResourceRoles": [
     "slave_public"
+  ],
+  "portDefinitions": [
+    {
+      "port": 7777,
+      "protocol": "tcp",
+      "name": "default",
+      "labels": {
+        "VIP_0": "/drax:7777"
+      }
+    }
   ],
   "requirePorts": true,
   "env": {

@@ -61,7 +61,7 @@ func killTasks(w http.ResponseWriter, r *http.Request) {
 			log.WithFields(log.Fields{"handle": "/rampage"}).Debug("APP ", app.ID)
 			details, _ := client.Application(app.ID)
 
-			if !myself(details) {
+			if !myself(details) && !isFramework(details) {
 				if details.Tasks != nil && len(details.Tasks) > 0 {
 					for _, task := range details.Tasks {
 						log.WithFields(log.Fields{"handle": "/rampage"}).Debug("TASK ", task.ID)
@@ -129,6 +129,18 @@ func killTask(c marathon.Marathon, taskID string) bool {
 func myself(app *marathon.Application) bool {
 	if strings.Contains(app.ID, "drax") {
 		return true
+	}
+	return false
+}
+
+// isFramework returns true if the Marathon app is a service framework,
+// and false otherwise (determined via the DCOS_PACKAGE_IS_FRAMEWORK label key)
+func isFramework(app *marathon.Application) bool {
+	for k, v := range *app.Labels {
+		log.WithFields(log.Fields{"handle": "/rampage"}).Debug("LABEL ", k, ":", v)
+		if k == "DCOS_PACKAGE_IS_FRAMEWORK" && v == "true" {
+			return true
+		}
 	}
 	return false
 }

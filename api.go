@@ -6,15 +6,21 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	log "github.com/Sirupsen/logrus"
 	marathon "github.com/gambol99/go-marathon"
 )
 
+// StatsResult JSON payload
+type StatsResult struct {
+	KilledTasks uint64 `json:"gone"`
+}
+
 // RampageResult JSON payload
 type RampageResult struct {
-	Success     bool
-	KilledTasks []string
+	Success     bool     `json:"success"`
+	KilledTasks []string `json:"goners"`
 }
 
 // Handles /health API calls (GET only)
@@ -25,7 +31,14 @@ func getHealth(w http.ResponseWriter, r *http.Request) {
 
 // Handles /stats API calls (GET only)
 func getStats(w http.ResponseWriter, r *http.Request) {
-	log.WithFields(log.Fields{"handle": "/stats"}).Info("Reporting on runtime statistics ...")
+	log.WithFields(log.Fields{"handle": "/stats"}).Info("Overall tasks killed: ", overallTasksKilled)
+
+	sr := &StatsResult{
+		KilledTasks: overallTasksKilled}
+
+	srJSON, _ := json.Marshal(sr)
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(srJSON))
 }
 
 // Handles /rampage API calls (POST only)
@@ -121,9 +134,9 @@ func rampage(w http.ResponseWriter, c marathon.Marathon, candidates []string) {
 		killTask(c, candidate)
 		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Killed tasks ", candidate)
 		rr.KilledTasks = append(rr.KilledTasks, candidate)
+		atomic.AddUint64(&overallTasksKilled, 1)
+		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Counter: ", overallTasksKilled)
 	}
-
-	//	io.WriteString(w, "Killed "+strconv.Itoa(sum)+" tasks")
 
 	rrJSON, _ := json.Marshal(rr)
 	w.Header().Set("Content-Type", "application/json")

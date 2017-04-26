@@ -33,10 +33,11 @@ const (
 )
 
 var (
-	port             string
-	marathonURL      string
-	destructionLevel = DestructionLevel(DLBASIC)
-	numTargets       = int(DefaultNumTargets)
+	port               string
+	marathonURL        string
+	destructionLevel   = DestructionLevel(DLBASIC)
+	numTargets         = int(DefaultNumTargets)
+	overallTasksKilled uint64
 )
 
 func init() {

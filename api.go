@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"math/rand"
 	"net/http"
@@ -9,6 +10,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 	marathon "github.com/gambol99/go-marathon"
 )
+
+// RampageResult JSON payload
+type RampageResult struct {
+	Success     bool
+	KilledTasks []string
+}
 
 // Handles /health API calls (GET only)
 func getHealth(w http.ResponseWriter, r *http.Request) {
@@ -104,13 +111,23 @@ func rampage(w http.ResponseWriter, c marathon.Marathon, candidates []string) {
 		targets = rand.Perm(len(candidates))
 	}
 
+	rr := &RampageResult{
+		Success:     true,
+		KilledTasks: []string{}}
+
 	// kill the candidates
 	for _, t := range targets {
 		candidate := candidates[t]
 		killTask(c, candidate)
 		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Killed tasks ", candidate)
+		rr.KilledTasks = append(rr.KilledTasks, candidate)
 	}
 
+	//	io.WriteString(w, "Killed "+strconv.Itoa(sum)+" tasks")
+
+	rrJSON, _ := json.Marshal(rr)
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(rrJSON))
 }
 
 // killTask kills a certain task and increments overall count if successful

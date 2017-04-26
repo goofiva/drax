@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	marathon "github.com/gambol99/go-marathon"
@@ -60,10 +61,12 @@ func killTasks(w http.ResponseWriter, r *http.Request) {
 			log.WithFields(log.Fields{"handle": "/rampage"}).Debug("APP ", app.ID)
 			details, _ := client.Application(app.ID)
 
-			if details.Tasks != nil && len(details.Tasks) > 0 {
-				for _, task := range details.Tasks {
-					log.WithFields(log.Fields{"handle": "/rampage"}).Debug("TASK ", task.ID)
-					candidates = append(candidates, task.ID)
+			if !myself(details) {
+				if details.Tasks != nil && len(details.Tasks) > 0 {
+					for _, task := range details.Tasks {
+						log.WithFields(log.Fields{"handle": "/rampage"}).Debug("TASK ", task.ID)
+						candidates = append(candidates, task.ID)
+					}
 				}
 			}
 		}
@@ -92,7 +95,7 @@ func getClient() (marathon.Marathon, bool) {
 
 // rampage kills random tasks from the candidates and returns a JSON result
 func rampage(w http.ResponseWriter, c marathon.Marathon, candidates []string) {
-	targets := []int{}
+	var targets []int
 
 	// generates a list of random, non-repeating indices into the candidates:
 	if len(candidates) > numTargets {
@@ -120,4 +123,12 @@ func killTask(c marathon.Marathon, taskID string) bool {
 
 	log.WithFields(log.Fields{"handle": "/rampage"}).Debug("Killed task ", taskID)
 	return true
+}
+
+// myself returns true if it is applied to DRAX Marathon app itself
+func myself(app *marathon.Application) bool {
+	if strings.Contains(app.ID, "drax") {
+		return true
+	}
+	return false
 }

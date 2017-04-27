@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	marathon "github.com/gambol99/go-marathon"
@@ -136,6 +137,7 @@ func rampage(w http.ResponseWriter, c marathon.Marathon, candidates []string) {
 		rr.KilledTasks = append(rr.KilledTasks, candidate)
 		atomic.AddUint64(&overallTasksKilled, 1)
 		log.WithFields(log.Fields{"handle": "/rampage"}).Info("Counter: ", overallTasksKilled)
+		time.Sleep(time.Millisecond * time.Duration(sleepTime))
 	}
 
 	rrJSON, _ := json.Marshal(rr)

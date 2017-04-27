@@ -19,8 +19,10 @@ const (
 	DEFAULTPORT string = "7777"
 	// MARATHONURL for connection to DC/OS
 	MARATHONURL string = "http://marathon.mesos:8080"
-	// DefaultNumTargets is the number of tasks to kill
-	DefaultNumTargets int = 2
+	// DEFAULTNUMTARGET is the number of tasks to kill
+	DEFAULTNUMTARGET int = 2
+	// DEFAULTSLEEPTIME is the time in ms to wait between the killing of tasks
+	DEFAULTSLEEPTIME int = 100
 )
 
 const (
@@ -36,7 +38,8 @@ var (
 	port               string
 	marathonURL        string
 	destructionLevel   = DestructionLevel(DLBASIC)
-	numTargets         = int(DefaultNumTargets)
+	numTargets         = int(DEFAULTNUMTARGET)
+	sleepTime          = int(DEFAULTSLEEPTIME)
 	overallTasksKilled uint64
 )
 
@@ -80,6 +83,12 @@ func init() {
 		numTargets = n
 	}
 	log.WithFields(log.Fields{"main": "init"}).Info("I will destroy ", numTargets, " tasks on a rampage")
+
+	if st := os.Getenv("SLEEP_TIME"); st != "" {
+		s, _ := strconv.Atoi(st)
+		sleepTime = s
+	}
+	log.WithFields(log.Fields{"main": "init"}).Info("I will wait ", sleepTime, "ms between the killing of tasks")
 
 }
 

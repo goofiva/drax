@@ -6,7 +6,7 @@
   "mem": 200,
   "fetch": [
     {
-      "uri": "https://github.com/dcos-labs/drax/releases/download/0.3.0/drax"
+      "uri": "https://github.com/dcos-labs/drax/releases/download/0.4.0/drax"
     }
   ],
   "healthChecks": [
